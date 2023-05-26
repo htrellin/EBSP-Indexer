@@ -17,3 +17,4 @@ EBSD-GUI.spec
 dist_backup
 dist_arm64
 EBSP Indexer.spec
+html
