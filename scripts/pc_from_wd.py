@@ -7,7 +7,14 @@ from utils import FileBrowser, SettingFile
 
 
 class wdCalibration(QDialog):
+    """
+    Dialog window for adding a calibration curve for a new microscope
+    """
+
     def __init__(self, parent=None):
+        """
+        Dialog window for adding a calibration curve for a new microscope.
+        """
         super().__init__(parent)
 
         # Dialog box ui setup
@@ -30,12 +37,20 @@ class wdCalibration(QDialog):
         self.ui.buttonBox.accepted.connect(lambda: self.run_calibration())
 
         self.ui.pushButtonAddPosition.clicked.connect(lambda: self.addRow())
-        self.ui.pushButtonRemovePosition.clicked.connect(lambda: self.removeRow())
+        self.ui.pushButtonRemovePosition.clicked.connect(
+            lambda: self.removeRow())
 
         self.ui.tableWidget.cellChanged.connect(lambda: self.checkValidInput())
         self.ui.lineEdit.textChanged.connect(lambda: self.checkValidInput())
 
     def get_microscope_name(self):
+        """
+        Get microscope name from the Setting.txt file stored in the same directory as the Pattern.dat file.
+
+        Reads the values for Manufacturer and Model and stores it as a string.
+
+        """
+
         if self.fileBrowserOD.getFile():
             setting_file_path = self.fileBrowserOD.getPaths()[0]
             N = 10
@@ -46,7 +61,8 @@ class wdCalibration(QDialog):
                         item = next(f).strip().split("\t")
                         if item[0].lower() in ["manufacturer", "model"]:
                             microscope[item[0]] = item[1]
-                microscope_name = microscope["Manufacturer"] + " " + microscope["Model"]
+                microscope_name = microscope["Manufacturer"] + \
+                    " " + microscope["Model"]
                 self.ui.lineEdit.setText(microscope_name)
             except:
                 QMessageBox(self).warning(
@@ -59,6 +75,9 @@ class wdCalibration(QDialog):
                 return
 
     def addRow(self):
+        """
+        Adds new row to the table of calibration values.
+        """
         rows = self.ui.tableWidget.rowCount()
         self.ui.tableWidget.insertRow(rows)
         labels = [f"Position {i}" for i in range(1, rows + 2)]
@@ -68,12 +87,18 @@ class wdCalibration(QDialog):
             self.ui.pushButtonRemovePosition.setEnabled(True)
 
     def removeRow(self):
+        """
+        Removes the selected row from the table of calibration values.
+        """
         self.ui.tableWidget.removeRow(self.ui.tableWidget.currentRow())
 
         if self.ui.tableWidget.rowCount() <= 2:
             self.ui.pushButtonRemovePosition.setEnabled(False)
 
     def checkValidInput(self):
+        """
+        Checks if the input values are valid.
+        """
         columns = self.ui.tableWidget.columnCount()
         rows = self.ui.tableWidget.rowCount()
         checksum = columns * rows
@@ -82,7 +107,8 @@ class wdCalibration(QDialog):
             for row in range(self.ui.tableWidget.rowCount()):
                 try:
                     float(self.ui.tableWidget.item(row, column).text())
-                    col.append(float(self.ui.tableWidget.item(row, column).text()))
+                    col.append(
+                        float(self.ui.tableWidget.item(row, column).text()))
                 except:
                     checksum -= 1
             if column == 0 and len(col) > len(set(col)):
@@ -108,6 +134,9 @@ class wdCalibration(QDialog):
             )
 
     def run_calibration(self):
+        """
+        Passes the values from the table to the linear regression. The line values for PC_x, PC_y and PC_z are stored as tuples. 
+        """
         self.setting_file = SettingFile("advanced_settings.txt")
         self.microscope_name = self.ui.lineEdit.text()
         calibration_values = [[], [], [], []]
@@ -120,9 +149,12 @@ class wdCalibration(QDialog):
                     float(self.ui.tableWidget.item(row, column).text())
                 )
 
-        x_slope, x_intersept, *_ = linreg(calibration_values[0], calibration_values[1])
-        y_slope, y_intersept, *_ = linreg(calibration_values[0], calibration_values[2])
-        z_slope, z_intersept, *_ = linreg(calibration_values[0], calibration_values[3])
+        x_slope, x_intersept, * \
+            _ = linreg(calibration_values[0], calibration_values[1])
+        y_slope, y_intersept, * \
+            _ = linreg(calibration_values[0], calibration_values[2])
+        z_slope, z_intersept, * \
+            _ = linreg(calibration_values[0], calibration_values[3])
 
         self.pc_curve = (
             (round(x_slope, 5), round(x_intersept, 5)),
@@ -135,7 +167,9 @@ def pc_from_wd(microscope: str, working_distance: float, convention="TSL"):
     """
     Returns pattern center depending microscope, calculated from linear regression of PC's from different working distances.
 
-    If no microsope configuration is found, return (0.5, 0.8, 0.5) TSL
+    Calibrated microscopes are stored in the file advanced_settings.txt
+
+    If no microscope configuration is found, return (0.5, 0.8, 0.5) TSL
     """
     setting_file = SettingFile("advanced_settings.txt")
     wd = float(working_distance)

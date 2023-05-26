@@ -30,6 +30,9 @@ from scripts.signal_loader import crystalMap, EBSDDataset
 
 class SignalNavigationWidget(QWidget):
     def __init__(self, mainWindow: QMainWindow) -> None:
+        """
+        The signal navigation widget.  
+        """
         super().__init__(parent=mainWindow)
 
         self.ui = Ui_SignalNavigationWidget()
@@ -65,7 +68,24 @@ class SignalNavigationWidget(QWidget):
     def showStatusTip(self, tip: str):
         QApplication.sendEvent(self, QStatusTipEvent(tip))
 
-    def load_dataset(self, file_path):
+    def load_dataset(self, file_path: str):
+        """
+        Takes in the path for the dataset. 
+
+        The type of dataset is determined by a try/except-statement and the dataset is loaded by the correct signal loader.
+
+            EBSD is loaded using the kikuchipy loader, CrystalMap is loaded using the orix.io loader.
+
+        The dataset is passed as an argument to either EBSDDataset or crystalMap depending on the signal 
+
+        The dataset object is passed to the plot_navigator function.
+
+        Parameters
+        ----------
+        file_path: str
+            file path to the dataset
+        """
+
         self.file_dir = path.dirname(file_path)
         try:
             signal = kp.load(file_path, lazy=True)
@@ -105,8 +125,22 @@ class SignalNavigationWidget(QWidget):
             self.ui.labelPhase1.setText("")
         
 
-    def plot_navigator(self, dataset, nav_type: str, x=0, y=0):
-        
+    def plot_navigator(self, dataset: EBSDDataset | crystalMap, nav_type: str, x: int = 0, y: int = 0):
+        """
+        Plots the selected navigator to the navigation view.
+
+        Parameters
+        ----------
+        dataset : EBSDDataset | crystalMap
+            custom class EBSDDataset or crystalMap from signal_loader
+        nav_type : str
+            EBSDDataset navigators: Mean intensity map, Image quality map, Virtual BSE map
+            crystalMap navigators: Inverse pole figure, Phase map, Normalized cross-correlation map and Orientation similarity metric
+        x : int
+            x index of dataset, by default set to 0
+        y : int
+            y-index of dataset, by default set to 0
+        """
         if nav_type == "":
             return
 
@@ -156,7 +190,21 @@ class SignalNavigationWidget(QWidget):
             lambda event: self.on_hover_navigator(event),
         )
 
-    def plot_signal(self, dataset, x_index, y_index):
+    def plot_signal(self, dataset: EBSDDataset | crystalMap, x_index: int, y_index: int):
+        """
+        Plots the EBSP for the current x_index, y_index to the signal view.
+
+        If the dataset is a crystalMap and self.add_geosim = True, a geometrical simulation is plotted.
+
+        Parameters
+        ----------
+        dataset : EBSDDataset | crystalMap
+            custom class EBSDDataset or crystalMap from signal_loader
+        x_index : int
+            x index of ebsd signal
+        y_index : int
+            y-index of ebsd signal
+        """
         self.add_geosim = self.ui.checkBox.isChecked()
         pattern = dataset.ebsd
         signal = pattern.data[y_index, x_index]
@@ -192,7 +240,10 @@ class SignalNavigationWidget(QWidget):
 
         self.current_x, self.current_y = x_index, y_index
 
-    def on_click_navigator(self, event, dataset):
+    def on_click_navigator(self, event, dataset: EBSDDataset | crystalMap):
+        """
+        Trigger function when user clicks within the navigator view area.
+        """
         try:
             self.click_rect.remove()
         except:
@@ -266,6 +317,9 @@ class SignalNavigationWidget(QWidget):
                 self.ui.labelPhaseClick.setText(f"{phase_name}")
 
     def on_hover_navigator(self, event):
+        """
+        Trigger function when user hovers inside the navigator area.
+        """
         if event.inaxes:
             self.cursor.set_active(True)
             x_hover, y_hover = floor(event.xdata), floor(event.ydata)
@@ -295,6 +349,11 @@ class SignalNavigationWidget(QWidget):
                 self.ui.navigatorCoordinates.setText(f"(x, y)")
 
     def export_image(self, navigator_index: int, signal):
+        """
+        Exports the current view and saves it as a .png image.
+
+        The user is presented with a dialog where directory and filename is set.
+        """
         saveImageBrowser = FileBrowser(
             mode=FileBrowser.SaveFile, dirpath=self.file_dir, filter_name="*.png"
         )
